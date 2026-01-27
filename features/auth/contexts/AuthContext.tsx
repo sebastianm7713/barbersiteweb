@@ -18,6 +18,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roleName, setRoleName] = useState<string | null>(null);
 
   useEffect(() => {
+    // In development, skip restoring saved session so the landing page
+    // is shown on `npm run dev`. In production the saved session will
+    // still be restored from localStorage.
+    if (import.meta.env.DEV) {
+      return;
+    }
+
     // Check for saved session
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
