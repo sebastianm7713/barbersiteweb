@@ -73,16 +73,6 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
     }
   }, [providedConfig]);
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const header = document.querySelector('header');
-      const offset = header ? header.clientHeight + 16 : 16;
-      const y = el.getBoundingClientRect().top + window.pageYOffset - offset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
-
   const services = [
     { icon: Scissors, title: 'Corte de Cabello', description: 'Cortes modernos y clásicos' },
     { icon: Scissors, title: 'Barba & Afeitado', description: 'Cuidado y estilo de barba profesional' },
@@ -129,10 +119,10 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
               <span className="text-2xl font-bold text-white">{config.businessName}</span>
             </div>
             <nav className="hidden md:flex gap-6 text-white">
-              <a href="#servicios" onClick={(e) => { e.preventDefault(); scrollToSection('servicios'); }} className="hover:text-[#D4AF37] transition">Servicios</a>
-              <a href="#nosotros" onClick={(e) => { e.preventDefault(); scrollToSection('nosotros'); }} className="hover:text-[#D4AF37] transition">Nosotros</a>
-              <a href="#testimonios" onClick={(e) => { e.preventDefault(); scrollToSection('testimonios'); }} className="hover:text-[#D4AF37] transition">Testimonios</a>
-              <a href="#contacto" onClick={(e) => { e.preventDefault(); scrollToSection('contacto'); }} className="hover:text-[#D4AF37] transition">Contacto</a>
+              <a href="#servicios" className="hover:text-[#D4AF37] transition">Servicios</a>
+              <a href="#nosotros" className="hover:text-[#D4AF37] transition">Nosotros</a>
+              <a href="#testimonios" className="hover:text-[#D4AF37] transition">Testimonios</a>
+              <a href="#contacto" className="hover:text-[#D4AF37] transition">Contacto</a>
             </nav>
             <Button onClick={onGetStarted} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
               Acceder
@@ -164,7 +154,6 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
               <Button 
                 size="lg" 
                 variant="outline"
-                onClick={() => scrollToSection('servicios')}
                 className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black text-lg px-8 py-6"
               >
                 Ver Servicios
