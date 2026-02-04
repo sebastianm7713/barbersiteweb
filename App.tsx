@@ -1,4 +1,5 @@
 import { useState } from 'react';
+<<<<<<< HEAD
 import { AuthProvider, useAuth, LoginForm, RegisterForm, RecoverPasswordForm } from './features/auth';
 import { Toaster } from './components/ui/sonner';
 import { MainLayout } from './core';
@@ -23,6 +24,32 @@ import { LandingPage } from './components/LandingPage';
 import { MiPerfilView } from './features/mi-perfil';
 import { ConfiguracionLandingView } from './features/configuracion-landing';
 import { ReportesVentasView, RendimientoEmpleadosView } from './features/medicion-desempeno';
+=======
+import { AuthProvider, useAuth, LoginForm, RegisterForm, RecoverPasswordForm } from '../features/auth';
+import { Toaster } from '../components/ui/sonner';
+import { MainLayout } from '../core';
+import { Dashboard } from '../features/dashboard';
+import { ClienteDashboard } from '../features/cliente-dashboard';
+import { RolesView } from '../features/roles';
+import { UsuariosView } from '../features/usuarios';
+import { ProductosView } from '../features/productos';
+import { ProveedoresView } from '../features/proveedores';
+import { ComprasView } from '../features/compras';
+import { DevolucionesStockView } from '../features/devoluciones';
+import { DevolucionesProveedorView } from '../features/devoluciones-proveedor';
+import { ConsignacionesView } from '../features/consignaciones';
+import { ServiciosView } from '../features/servicios';
+import { CitasView } from '../features/citas';
+import { EmpleadosView } from '../features/empleados';
+import { ClientesView } from '../features/clientes';
+import { ClientesTemporalesView } from '../features/clientes-temporales';
+import { PagosView } from '../features/pagos';
+import { VentasView } from '../features/ventas';
+import { LandingPage } from '../components/LandingPage';
+import { MiPerfilView } from '../features/mi-perfil';
+import { ConfiguracionLandingView } from '../features/configuracion-landing';
+import { ReportesVentasView, RendimientoEmpleadosView } from '../features/medicion-desempeno';
+>>>>>>> a8362eda00556f0409b4cf39f97532f55de15db1
 
 type AuthView = 'login' | 'register' | 'recover' | 'landing';
 
@@ -150,4 +177,8 @@ export default function App() {
       <Toaster />
     </AuthProvider>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> a8362eda00556f0409b4cf39f97532f55de15db1
