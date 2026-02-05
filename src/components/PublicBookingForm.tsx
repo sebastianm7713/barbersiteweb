@@ -24,6 +24,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   });
   const [bookingData, setBookingData] = useState({
     id_servicio: '',
+    id_servicios: [] as string[],
     id_empleado: '',
     fecha: '',
     hora: '',
@@ -52,8 +53,17 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!bookingData.id_servicio || !bookingData.fecha || !bookingData.hora) {
+    const hasSelectedServices = (bookingData.id_servicios || []).length || bookingData.id_servicio;
+    if (!hasSelectedServices || !bookingData.fecha || !bookingData.hora) {
       toast.error('Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    // validate availability by summed duration
+    const empleadoId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined;
+    const desiredDuration = computeSelectedServicesDuration();
+    if (empleadoId && hasConflictPublic(empleadoId, bookingData.fecha, bookingData.hora)) {
+      toast.error('El barbero no está disponible en la fecha y hora seleccionadas');
       return;
     }
 
@@ -73,7 +83,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       id_cita: getNextCitaId(),
       id_cliente: 0, // No tiene cliente registrado
       id_cliente_temporal: newClienteTemporal.id_cliente_temporal,
-      id_servicio: parseInt(bookingData.id_servicio),
+      id_servicio: (bookingData.id_servicios || []).length ? parseInt((bookingData.id_servicios || [])[0]) : (bookingData.id_servicio ? parseInt(bookingData.id_servicio) : undefined),
+      id_servicios: (bookingData.id_servicios || []).length ? (bookingData.id_servicios || []).map(s => parseInt(s)) : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []),
       id_empleado: bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined,
       fecha: bookingData.fecha,
       hora: bookingData.hora,
@@ -101,12 +112,80 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     return mockServicios.find(s => s.id_servicio === id)?.precio || 0;
   };
 
+  const formatDurationPublic = (minutes: number) => {
+    if (!minutes) return '0 min';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m} min`;
+  };
+
+  const formatSelectedServicesPublic = (booking: any) => {
+    const ids: number[] = (booking.id_servicios && booking.id_servicios.length) ? booking.id_servicios.map((s: string) => parseInt(s)) : (booking.id_servicio ? [parseInt(booking.id_servicio)] : []);
+    if (ids.length === 0) return 'N/A';
+    return ids.map(id => mockServicios.find(s => s.id_servicio === id)?.nombre || 'N/A').join(', ');
+  };
+
   // Generar horarios disponibles
   const timeSlots = [
     '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
     '12:00', '12:30', '14:00', '14:30', '15:00', '15:30',
     '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
   ];
+
+  const parseTimeToMinutes = (time: string) => {
+    const [hh, mm] = time.split(':').map(Number);
+    return hh * 60 + mm;
+  };
+
+  const computeServiciosDuration = (cita: any) => {
+    const ids: number[] = cita.id_servicios?.length ? cita.id_servicios : (cita.id_servicio ? [cita.id_servicio] : []);
+    if (ids.length === 0) return 30;
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.duracion || 30), 0);
+  };
+
+  const computeSelectedServicesDuration = () => {
+    const selectedIds = (bookingData.id_servicios || []);
+    const ids = selectedIds.length ? selectedIds.map(s => parseInt(s)) : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []);
+    if (ids.length === 0) return 30;
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.duracion || 30), 0);
+  };
+
+  const computeSelectedServicesPrice = () => {
+    const selectedIds = (bookingData.id_servicios || []);
+    const ids = selectedIds.length ? selectedIds.map(s => parseInt(s)) : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []);
+    if (ids.length === 0) return 0;
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.precio || 0), 0);
+  };
+
+  const getOccupiedTimesPublic = (fecha?: string, empleadoId?: number) => {
+    if (!fecha || !empleadoId) return [] as string[];
+    const desiredDuration = computeSelectedServicesDuration();
+    return timeSlots.filter(slot => {
+      const start = parseTimeToMinutes(slot);
+      const end = start + desiredDuration;
+      return dataStore.citas.some(c => {
+        if (c.id_empleado !== empleadoId || c.fecha !== fecha) return false;
+        const cStart = parseTimeToMinutes(c.hora);
+        const cDuration = computeServiciosDuration(c);
+        const cEnd = cStart + cDuration;
+        return start < cEnd && cStart < end;
+      });
+    });
+  };
+
+  const hasConflictPublic = (empleadoId: number, fecha: string, hora: string) => {
+    if (!empleadoId) return false;
+    const start = parseTimeToMinutes(hora);
+    const duration = computeSelectedServicesDuration();
+    const end = start + duration;
+    return dataStore.citas.some(c => {
+      if (c.id_empleado !== empleadoId || c.fecha !== fecha) return false;
+      const cStart = parseTimeToMinutes(c.hora);
+      const cDuration = computeServiciosDuration(c);
+      const cEnd = cStart + cDuration;
+      return start < cEnd && cStart < end;
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -204,23 +283,31 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         {step === 'booking' && (
           <form onSubmit={handleBookingSubmit}>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="servicio">Servicio *</Label>
-                <Select
-                  value={bookingData.id_servicio}
-                  onValueChange={(value) => setBookingData({ ...bookingData, id_servicio: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un servicio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockServicios.map((servicio) => (
-                      <SelectItem key={servicio.id_servicio} value={servicio.id_servicio.toString()}>
-                        {servicio.nombre} - ${servicio.precio.toFixed(2)} ({servicio.duracion} min)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Servicios *</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded">
+                  {mockServicios.map(servicio => {
+                    const checked = (bookingData.id_servicios || []).includes(servicio.id_servicio.toString());
+                    return (
+                      <label key={servicio.id_servicio} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set((bookingData.id_servicios || []));
+                            if (e.target.checked) next.add(servicio.id_servicio.toString()); else next.delete(servicio.id_servicio.toString());
+                            setBookingData({ ...bookingData, id_servicios: Array.from(next) });
+                          }}
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium">{servicio.nombre}</div>
+                          <div className="text-xs text-muted-foreground">${servicio.precio.toFixed(2)} — {servicio.duracion} min</div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">Duración total: <span className="font-medium text-white">{formatDurationPublic(computeSelectedServicesDuration())}</span> • Precio total: <span className="font-medium text-white">${computeSelectedServicesPrice().toFixed(2)}</span></div>
               </div>
 
               <div className="space-y-2">
@@ -266,11 +353,15 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                       <SelectValue placeholder="Selecciona hora" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
+                      {(() => {
+                        const empleadoId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined;
+                        const occupied = getOccupiedTimesPublic(bookingData.fecha, empleadoId) || [];
+                        return timeSlots.map((time) => (
+                          <SelectItem key={time} value={time} disabled={occupied.includes(time)} className={occupied.includes(time) ? 'opacity-50 cursor-not-allowed' : ''}>
+                            {time}{occupied.includes(time) ? ' — ocupado' : ''}
+                          </SelectItem>
+                        ));
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -287,14 +378,17 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                 />
               </div>
 
-              {bookingData.id_servicio && (
+              {(bookingData.id_servicios || bookingData.id_servicio) && (
                 <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-lg">
                   <p className="font-semibold mb-2">Resumen de tu cita:</p>
                   <p className="text-sm">
-                    <strong>Servicio:</strong> {getServiceName(parseInt(bookingData.id_servicio))}
+                    <strong>Servicios:</strong> {formatSelectedServicesPublic(bookingData)}
                   </p>
                   <p className="text-sm">
-                    <strong>Precio:</strong> ${getServicePrice(parseInt(bookingData.id_servicio)).toFixed(2)}
+                    <strong>Precio total:</strong> ${computeSelectedServicesPrice().toFixed(2)}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Duración total:</strong> {formatDurationPublic(computeSelectedServicesDuration())}
                   </p>
                   {bookingData.fecha && (
                     <p className="text-sm">

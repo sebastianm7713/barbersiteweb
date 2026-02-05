@@ -131,7 +131,6 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
             <nav className="hidden md:flex gap-6 text-white">
               <a href="#servicios" onClick={(e) => { e.preventDefault(); scrollToSection('servicios'); }} className="hover:text-[#D4AF37] transition">Servicios</a>
               <a href="#nosotros" onClick={(e) => { e.preventDefault(); scrollToSection('nosotros'); }} className="hover:text-[#D4AF37] transition">Nosotros</a>
-              <a href="#testimonios" onClick={(e) => { e.preventDefault(); scrollToSection('testimonios'); }} className="hover:text-[#D4AF37] transition">Testimonios</a>
               <a href="#contacto" onClick={(e) => { e.preventDefault(); scrollToSection('contacto'); }} className="hover:text-[#D4AF37] transition">Contacto</a>
             </nav>
             <Button onClick={onGetStarted} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
@@ -275,30 +274,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonios" className="py-20 bg-black">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Lo Que Dicen Nuestros Clientes</h2>
-            <p className="text-gray-400 text-lg">Testimonios reales de clientes satisfechos</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="bg-gray-900 border-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-[#D4AF37] text-[#D4AF37]" />
-                    ))}
-                  </div>
-                  <p className="text-gray-300 mb-4 italic">"{testimonial.text}"</p>
-                  <p className="text-[#D4AF37] font-semibold">{testimonial.name}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Testimonials removed per request */}
 
       {/* Contact Section */}
       <section id="contacto" className="py-20 bg-gray-900">

@@ -80,11 +80,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
     { icon: Clock, title: 'Tratamientos', description: 'Tratamientos capilares premium' },
   ];
 
-  const testimonials = [
-    { name: 'Carlos Mendoza', text: 'Excelente servicio, los mejores barberos de la ciudad', rating: 5 },
-    { name: 'Juan Pérez', text: 'Ambiente profesional y resultados increíbles', rating: 5 },
-    { name: 'Miguel Torres', text: 'Mi barbería favorita, siempre salgo satisfecho', rating: 5 },
-  ];
+  // Testimonials removed per client request
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black to-gray-900">
@@ -121,7 +117,6 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
             <nav className="hidden md:flex gap-6 text-white">
               <a href="#servicios" className="hover:text-[#D4AF37] transition">Servicios</a>
               <a href="#nosotros" className="hover:text-[#D4AF37] transition">Nosotros</a>
-              <a href="#testimonios" className="hover:text-[#D4AF37] transition">Testimonios</a>
               <a href="#contacto" className="hover:text-[#D4AF37] transition">Contacto</a>
             </nav>
             <Button onClick={onGetStarted} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
@@ -224,14 +219,10 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
               <p className="text-gray-300 text-lg mb-6">
                 {config.aboutDescription2}
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="text-center p-4 bg-black/50 rounded-lg border border-[#D4AF37]/30 backdrop-blur-sm">
                   <div className="text-3xl font-bold text-[#D4AF37] mb-1">{config.yearsExperience}</div>
                   <div className="text-gray-400">Años de Experiencia</div>
-                </div>
-                <div className="text-center p-4 bg-black/50 rounded-lg border border-[#D4AF37]/30 backdrop-blur-sm">
-                  <div className="text-3xl font-bold text-[#D4AF37] mb-1">{config.happyClients}</div>
-                  <div className="text-gray-400">Clientes Satisfechos</div>
                 </div>
               </div>
             </div>
@@ -264,30 +255,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonios" className="py-20 bg-black">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Lo Que Dicen Nuestros Clientes</h2>
-            <p className="text-gray-400 text-lg">Testimonios reales de clientes satisfechos</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="bg-gray-900 border-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-[#D4AF37] text-[#D4AF37]" />
-                    ))}
-                  </div>
-                  <p className="text-gray-300 mb-4 italic">"{testimonial.text}"</p>
-                  <p className="text-[#D4AF37] font-semibold">{testimonial.name}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Testimonials removed */}
 
       {/* Contact Section */}
       <section id="contacto" className="py-20 bg-gray-900">

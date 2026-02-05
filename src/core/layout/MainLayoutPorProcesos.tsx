@@ -48,6 +48,7 @@ import {
   DropdownMenuTrigger 
 } from '../../components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import ErrorBoundary from '../../components/ErrorBoundary';
 import { cn } from '../../components/ui/utils';
 
 interface MainLayoutProps {
@@ -620,9 +621,11 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
             </div>
           </div>
         </div>
-        <div className="relative">
-          {children}
-        </div>
+        <ErrorBoundary>
+          <div className="relative">
+            {children}
+          </div>
+        </ErrorBoundary>
       </main>
     </div>
   );

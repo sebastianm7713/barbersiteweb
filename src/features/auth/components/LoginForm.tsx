@@ -5,7 +5,7 @@ import { Label } from '../../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Scissors } from 'lucide-react';
 
 interface LoginFormProps {
   onRegisterClick: () => void;
@@ -39,36 +39,35 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick, onRecover
   };
 
   return (
-    <div className="relative">
-      <Button
-        type="button"
-        variant="ghost"
-        className="absolute -top-16 left-0 text-white hover:text-amber-400 hover:bg-white/10"
-        onClick={onBackToLanding}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver al Inicio
-      </Button>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Iniciar Sesión</CardTitle>
-          <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo Electrónico</Label>
-              <Input
+    <div className="min-h-screen flex items-center justify-center px-0">
+      {/* top back button removed; moved below register as requested */}
+
+      <Card className="w-screen mx-0 bg-[#E6F6FF] border border-blue-300 shadow-lg rounded-none overflow-hidden">
+        <div className="flex items-center gap-6 px-8 lg:px-40 py-12">
+          <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-full flex items-center justify-center">
+            <Scissors className="w-6 h-6 text-[#D4AF37]" />
+          </div>
+          <div>
+            <h3 className="text-[#D4AF37] text-2xl font-bold">Iniciar Sesión</h3>
+            <p className="text-[#D4AF37] text-sm">Ingresa tus credenciales para acceder</p>
+          </div>
+        </div>
+        <CardContent className="px-8 lg:px-40 py-12">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto w-full">
+            <div>
+              <Label htmlFor="email" className="text-amber-500 font-medium">Correo Electrónico</Label>
+                <Input
                 id="email"
                 type="email"
                 placeholder="usuario@ejemplo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                  className="mt-2 py-5 w-full text-lg bg-white text-gray-900 placeholder-gray-500"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+            <div>
+              <Label htmlFor="password" className="text-amber-500 font-medium">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -76,38 +75,51 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick, onRecover
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="mt-2 py-5 w-full text-lg bg-white text-gray-900 placeholder-gray-500"
               />
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
               <Button
                 type="button"
                 variant="link"
-                className="px-0"
+                className="px-0 text-sm text-[#D4AF37]"
                 onClick={onRecoverClick}
               >
                 ¿Olvidaste tu contraseña?
               </Button>
+              <div className="text-sm text-gray-700">Usuarios de prueba disponibles</div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black py-4 text-lg rounded-md transition-transform transform hover:-translate-y-0.5 hover:scale-[1.02] shadow-md hover:shadow-lg" disabled={loading}>
               {loading ? 'Ingresando...' : 'Iniciar Sesión'}
             </Button>
-            <div className="text-center">
-              <span className="text-muted-foreground">¿No tienes cuenta? </span>
+            <div className="text-center text-sm text-[#D4AF37]">
+              ¿No tienes cuenta?{' '}
               <Button
                 type="button"
                 variant="link"
-                className="px-0"
+                className="px-0 text-[#D4AF37]"
                 onClick={onRegisterClick}
               >
                 Regístrate
               </Button>
             </div>
+            <div className="mt-4 flex justify-center">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-[#D4AF37] hover:text-amber-400"
+                onClick={onBackToLanding}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver al Inicio
+              </Button>
+            </div>
           </form>
-          <div className="mt-4 p-3 bg-muted rounded-md">
-            <p className="text-xs text-muted-foreground mb-2">Usuarios de prueba:</p>
-            <p className="text-xs">Admin: admin@barberia.com / admin123</p>
-            <p className="text-xs">Barbero: carlos@barberia.com / barbero123</p>
-            <p className="text-xs">Cliente: juan@cliente.com / cliente123</p>
+          <div className="mt-6 p-4 bg-white rounded-lg border border-blue-200 text-sm text-gray-800">
+            <p className="mb-2 font-medium text-gray-800">Usuarios de prueba:</p>
+            <p>Admin: <span className="font-semibold text-gray-900">admin@barberia.com</span> / <span className="font-mono text-gray-700">admin123</span></p>
+            <p>Barbero: <span className="font-semibold text-gray-900">carlos@barberia.com</span> / <span className="font-mono text-gray-700">barbero123</span></p>
+            <p>Cliente: <span className="font-semibold text-gray-900">juan@cliente.com</span> / <span className="font-mono text-gray-700">cliente123</span></p>
           </div>
         </CardContent>
       </Card>

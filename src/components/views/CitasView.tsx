@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -29,6 +29,7 @@ export function CitasView() {
   const [formData, setFormData] = useState({
     id_cliente: '',
     id_servicio: '',
+    id_servicios: [] as string[],
     id_empleado: '',
     fecha: '',
     hora: '',
@@ -86,6 +87,7 @@ export function CitasView() {
       setFormData({
         id_cliente: clienteRecord.id_cliente.toString(),
         id_servicio: '',
+        id_servicios: [],
         id_empleado: '',
         fecha: '',
         hora: '',
@@ -100,6 +102,7 @@ export function CitasView() {
     setFormData({
       id_cliente: '',
       id_servicio: '',
+      id_servicios: [],
       id_empleado: '',
       fecha: '',
       hora: '',
@@ -117,7 +120,8 @@ export function CitasView() {
     setEditingCita(cita);
     setFormData({
       id_cliente: cita.id_cliente.toString(),
-      id_servicio: cita.id_servicio.toString(),
+      id_servicio: (cita as any).id_servicio ? (cita as any).id_servicio.toString() : '',
+      id_servicios: (cita as any).id_servicios ? (cita as any).id_servicios.map((s: number) => s.toString()) : ((cita as any).id_servicio ? [(cita as any).id_servicio.toString()] : []),
       id_empleado: cita.id_empleado?.toString() || '',
       fecha: cita.fecha,
       hora: cita.hora,
@@ -157,6 +161,17 @@ export function CitasView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validar disponibilidad antes de crear o actualizar
+    // Si es cliente, debe seleccionar un barbero
+    if (isCliente && (!formData.id_empleado || formData.id_empleado === '0')) {
+      toast.error('Selecciona un barbero antes de reservar');
+      return;
+    }
+    const empleadoId = formData.id_empleado ? parseInt(formData.id_empleado) : undefined;
+    if (hasConflict(empleadoId, formData.fecha, formData.hora, editingCita?.id_cita)) {
+      toast.error('El barbero no está disponible en la fecha y hora seleccionadas');
+      return;
+    }
 
     if (editingCita) {
       const index = dataStore.citas.findIndex(c => c.id_cita === editingCita.id_cita);
@@ -164,7 +179,8 @@ export function CitasView() {
         dataStore.citas[index] = {
           ...dataStore.citas[index],
           id_cliente: parseInt(formData.id_cliente),
-          id_servicio: parseInt(formData.id_servicio),
+            id_servicio: (formData.id_servicios || []).length ? parseInt((formData.id_servicios || [])[0]) : (formData.id_servicio ? parseInt(formData.id_servicio) : undefined),
+            id_servicios: (formData.id_servicios || []).length ? (formData.id_servicios || []).map(s => parseInt(s)) : (formData.id_servicio ? [parseInt(formData.id_servicio)] : []),
           id_empleado: formData.id_empleado ? parseInt(formData.id_empleado) : undefined,
           fecha: formData.fecha,
           hora: formData.hora,
@@ -179,7 +195,8 @@ export function CitasView() {
       const newCita: Cita = {
         id_cita: Math.max(...dataStore.citas.map(c => c.id_cita), 0) + 1,
         id_cliente: parseInt(formData.id_cliente),
-        id_servicio: parseInt(formData.id_servicio),
+        id_servicio: (formData.id_servicios || []).length ? parseInt((formData.id_servicios || [])[0]) : (formData.id_servicio ? parseInt(formData.id_servicio) : undefined),
+        id_servicios: (formData.id_servicios || []).length ? (formData.id_servicios || []).map(s => parseInt(s)) : (formData.id_servicio ? [parseInt(formData.id_servicio)] : []),
         id_empleado: formData.id_empleado ? parseInt(formData.id_empleado) : undefined,
         fecha: formData.fecha,
         hora: formData.hora,
@@ -256,6 +273,17 @@ export function CitasView() {
     return mockServicios.find(s => s.id_servicio === id)?.precio || 0;
   };
 
+  const formatServicios = (cita: any) => {
+    const ids: number[] = cita.id_servicios?.length ? cita.id_servicios : (cita.id_servicio ? [cita.id_servicio] : []);
+    if (ids.length === 0) return 'N/A';
+    return ids.map(id => mockServicios.find(s => s.id_servicio === id)?.nombre || 'N/A').join(', ');
+  };
+
+  const computeServiciosPrice = (cita: any) => {
+    const ids: number[] = cita.id_servicios?.length ? cita.id_servicios : (cita.id_servicio ? [cita.id_servicio] : []);
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.precio || 0), 0);
+  };
+
   const getEmpleadoName = (id?: number) => {
     if (!id) return 'Por asignar';
     const empleado = mockEmpleados.find(e => e.id_empleado === id);
@@ -267,6 +295,200 @@ export function CitasView() {
     '12:00', '12:30', '14:00', '14:30', '15:00', '15:30',
     '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
   ];
+
+  // Calendario
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
+  const [calendarEmpleadoFilter, setCalendarEmpleadoFilter] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('calendarEmpleadoFilter');
+      return saved || 'all';
+    } catch (e) {
+      return 'all';
+    }
+  });
+
+  // Si el usuario es cliente, por defecto mostrar el barbero con más citas previas del cliente
+  useEffect(() => {
+    if (!isCliente) return;
+    const clienteRecord = dataStore.clientes.find(c => c.email === user?.email);
+    if (!clienteRecord) return;
+    const counts: Record<number, number> = {};
+    dataStore.citas.forEach(c => {
+      if (c.id_cliente === clienteRecord.id_cliente && c.id_empleado) {
+        counts[c.id_empleado] = (counts[c.id_empleado] || 0) + 1;
+      }
+    });
+    const entries = Object.entries(counts);
+    if (entries.length === 0) return;
+    entries.sort((a, b) => b[1] - a[1]);
+    const topEmpleado = entries[0][0];
+    // Only set default if user hasn't stored a preference
+    try {
+      const saved = localStorage.getItem('calendarEmpleadoFilter');
+      if (!saved) setCalendarEmpleadoFilter(topEmpleado.toString());
+    } catch (e) {
+      setCalendarEmpleadoFilter(topEmpleado.toString());
+    }
+  }, [isCliente, user?.email]);
+
+  // Check for a prefill request from ClienteDashboard (stored in localStorage)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('prefillReserva');
+      if (!raw) return;
+      const payload = JSON.parse(raw || '{}');
+      const clienteRecord = dataStore.clientes.find(c => c.email === user?.email);
+      if (clienteRecord) {
+        setFormData(prev => ({
+          ...prev,
+          id_cliente: clienteRecord.id_cliente.toString(),
+          id_empleado: payload.empleadoId ? String(payload.empleadoId) : prev.id_empleado || '',
+          id_servicios: payload.servicioId ? [String(payload.servicioId)] : prev.id_servicios || [],
+        }));
+        setEditingCita(null);
+        // open dialog after microtask to avoid render ordering issues
+        setTimeout(() => setDialogOpen(true), 0);
+      }
+      localStorage.removeItem('prefillReserva');
+    } catch (e) {
+      // ignore parse errors
+      // eslint-disable-next-line no-console
+      console.error('Error reading prefillReserva', e);
+    }
+  }, [user?.email]);
+
+  // Persist filter selection
+  useEffect(() => {
+    try {
+      localStorage.setItem('calendarEmpleadoFilter', calendarEmpleadoFilter);
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, [calendarEmpleadoFilter]);
+
+  const citasVisible = useMemo(() => {
+    if (isCliente) {
+      const clienteRecord = dataStore.clientes.find(c => c.email === user?.email);
+      return dataStore.citas.filter(c => c.id_cliente === clienteRecord?.id_cliente);
+    }
+    if (isBarbero) {
+      return dataStore.citas.filter(c => c.id_empleado === user?.id_empleado);
+    }
+    // Admin or others
+    return dataStore.citas;
+  }, [user?.email, user?.id_empleado]);
+
+  const citasPorDia = useMemo(() => {
+    const map: Record<string, number> = {};
+    citasVisible.forEach(c => {
+      map[c.fecha] = (map[c.fecha] || 0) + 1;
+    });
+    return map;
+  }, [citasVisible]);
+
+  const monthDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: Array<{ day: number; dateStr: string; disabled?: boolean }> = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(year, month, i);
+      const dateStr = d.toISOString().slice(0, 10);
+      days.push({ day: i, dateStr });
+    }
+    return { firstDay, days };
+  }, [calendarMonth, citasPorDia]);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const hasConflict = (empleadoId: number | undefined, fecha: string, hora: string, excludingId?: number) => {
+    if (!empleadoId) return false;
+    // default to overlap check with 30min if durations not provided
+    const start = parseTimeToMinutes(hora);
+    const duration = computeSelectedServicesDuration();
+    const end = start + duration;
+    return dataStore.citas.some(c => {
+      if (c.id_empleado !== empleadoId || c.fecha !== fecha || c.id_cita === excludingId) return false;
+      const cStart = parseTimeToMinutes(c.hora);
+      const cDuration = computeServiciosDuration(c);
+      const cEnd = cStart + cDuration;
+      return start < cEnd && cStart < end;
+    });
+  };
+
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const getCitasForDate = (dateStr?: string) => {
+    if (!dateStr) return [] as Cita[];
+    let list = dataStore.citas.filter(c => c.fecha === dateStr);
+    if (calendarEmpleadoFilter && calendarEmpleadoFilter !== 'all') {
+      const empId = parseInt(calendarEmpleadoFilter);
+      list = list.filter(c => c.id_empleado === empId);
+    }
+    if (isCliente) {
+      const clienteRecord = dataStore.clientes.find(c => c.email === user?.email);
+      list = list.filter(c => c.id_cliente === clienteRecord?.id_cliente);
+    }
+    if (isBarbero) {
+      list = list.filter(c => c.id_empleado === user?.id_empleado);
+    }
+    return list;
+  };
+
+  const getOccupiedTimes = (fecha?: string, empleadoId?: number, excludingId?: number) => {
+    if (!fecha || !empleadoId) return [] as string[];
+    const desiredDuration = computeSelectedServicesDuration();
+    return timeSlots.filter(slot => {
+      const start = parseTimeToMinutes(slot);
+      const end = start + desiredDuration;
+      // check overlap with any existing cita
+      return dataStore.citas.some(c => {
+        if (c.id_empleado !== empleadoId || c.fecha !== fecha || c.id_cita === excludingId) return false;
+        const cStart = parseTimeToMinutes(c.hora);
+        const cDuration = computeServiciosDuration(c);
+        const cEnd = cStart + cDuration;
+        return start < cEnd && cStart < end;
+      });
+    });
+  };
+
+  const parseTimeToMinutes = (time: string) => {
+    const [hh, mm] = time.split(':').map(Number);
+    return hh * 60 + mm;
+  };
+
+  const computeServiciosDuration = (cita: any) => {
+    const ids: number[] = cita.id_servicios?.length ? cita.id_servicios : (cita.id_servicio ? [cita.id_servicio] : []);
+    if (ids.length === 0) return 30; // default 30 minutes
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.duracion || 30), 0);
+  };
+
+  const computeSelectedServicesDuration = () => {
+    const selectedIds = (formData.id_servicios || []);
+    const ids = selectedIds.length ? selectedIds.map(s => parseInt(s)) : (formData.id_servicio ? [parseInt(formData.id_servicio)] : []);
+    if (ids.length === 0) return 30;
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.duracion || 30), 0);
+  };
+
+  const computeSelectedServicesDurationDisplay = () => {
+    const selectedIds = (formData.id_servicios || []);
+    const ids = selectedIds.length ? selectedIds.map(s => parseInt(s)) : (formData.id_servicio ? [parseInt(formData.id_servicio)] : []);
+    if (ids.length === 0) return 0;
+    return ids.reduce((sum, id) => sum + (mockServicios.find(s => s.id_servicio === id)?.duracion || 30), 0);
+  };
+
+  const formatDuration = (minutes: number) => {
+    if (!minutes) return '0 min';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m} min`;
+  };
 
   const displayCitas = getFilteredCitasByRole();
 
@@ -346,6 +568,155 @@ export function CitasView() {
         </div>
       )}
 
+      {/* Calendario sencillo */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Calendario</CardTitle>
+            <div className="flex items-center gap-2">
+              <div>
+                <Label className="text-xs mb-1">Filtrar Barbero</Label>
+                <Select value={calendarEmpleadoFilter} onValueChange={(v) => setCalendarEmpleadoFilter(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los barberos</SelectItem>
+                    {mockEmpleados.map(e => (
+                      <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre} {e.apellido}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => {
+                  const d = new Date(calendarMonth);
+                  d.setMonth(d.getMonth() - 1);
+                  setCalendarMonth(d);
+                }}>‹</Button>
+                <div className="font-medium">{calendarMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</div>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const d = new Date(calendarMonth);
+                  d.setMonth(d.getMonth() + 1);
+                  setCalendarMonth(d);
+                }}>›</Button>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div style={{ width: '100%' }}>
+            <div
+              className="grid"
+              style={{
+                height: 'min(72vh, 640px)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gridTemplateRows: 'auto repeat(6, 1fr)',
+                gap: '8px'
+              }}
+            >
+              {/* headers (first row) */}
+              {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => (
+                <div key={d} className="text-center text-sm font-medium text-gray-700">{d}</div>
+              ))}
+
+              {/* 42 cells */}
+              {(() => {
+                const totalCells = 42;
+                const cells: Array<{ day?: number; dateStr?: string } | null> = [];
+                for (let i = 0; i < monthDays.firstDay; i++) cells.push(null);
+                monthDays.days.forEach(d => cells.push({ day: d.day, dateStr: d.dateStr }));
+                while (cells.length < totalCells) cells.push(null);
+
+                return cells.map((cell, idx) => {
+                  if (!cell) return (
+                    <div key={`cell-${idx}`} className="border rounded-md bg-gray-50" style={{ padding: 8 }} />
+                  );
+
+                  const { day, dateStr } = cell as { day: number; dateStr: string };
+                  const citasDay = getCitasForDate(dateStr);
+                  const shown = citasDay.slice(0, 3);
+                  const more = Math.max(0, citasDay.length - shown.length);
+                  const isToday = dateStr === todayStr;
+
+                  return (
+                    <div key={dateStr} className="border rounded-md bg-white p-2 flex flex-col" style={{ minHeight: 0 }}>
+                      <div className="flex items-start justify-between">
+                        <div className="text-sm font-medium text-gray-800">{day}</div>
+                        {citasDay.length > 0 && <div className="text-xs text-muted-foreground">{citasDay.length}</div>}
+                      </div>
+                      <div className="mt-2 text-[13px] text-muted-foreground overflow-hidden flex-1" style={{ minHeight: 0 }}>
+                        <div className="flex flex-col gap-1" style={{ maxHeight: '100%', overflow: 'hidden' }}>
+                          {shown.map(c => (
+                            <div key={c.id_cita} className="truncate">{c.hora} • {getServicioName(c.id_servicio)}</div>
+                          ))}
+                        </div>
+                        {more > 0 && <div className="text-xs text-muted-foreground mt-1">+{more} más</div>}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog que muestra citas del día seleccionado */}
+      <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Citas del {selectedDate}</DialogTitle>
+            <DialogDescription>
+              Lista de citas para la fecha seleccionada
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {getCitasForDate(selectedDate).length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">No hay citas en esta fecha.</div>
+            ) : (
+              <div className="space-y-2">
+                {getCitasForDate(selectedDate).map(cita => (
+                  <Card key={cita.id_cita}>
+                    <CardContent className="p-3 flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{cita.hora} — {getServicioName(cita.id_servicio)}</div>
+                        <div className="text-sm text-muted-foreground">{getClienteName(cita.id_cliente, cita.id_cliente_temporal)} • {getEmpleadoName(cita.id_empleado)}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => { handleViewDetails(cita); setDayDialogOpen(false); }}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {!isCliente && (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => { handleEdit(cita); setDayDialogOpen(false); }}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => { handleDelete(cita.id_cita); setDayDialogOpen(false); }}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              const emp = calendarEmpleadoFilter && calendarEmpleadoFilter !== 'all' ? calendarEmpleadoFilter : formData.id_empleado;
+              setFormData({ ...formData, fecha: selectedDate || '', id_empleado: emp || '' });
+              setDayDialogOpen(false);
+              setDialogOpen(true);
+            }} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">Nueva Cita</Button>
+            <Button onClick={() => setDayDialogOpen(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -383,7 +754,7 @@ export function CitasView() {
                   <TableRow key={cita.id_cita}>
                     <TableCell>#{cita.id_cita}</TableCell>
                     <TableCell>{getClienteName(cita.id_cliente, cita.id_cliente_temporal)}</TableCell>
-                    <TableCell>{getServicioName(cita.id_servicio)}</TableCell>
+                    <TableCell>{formatServicios(cita)}</TableCell>
                     <TableCell>{getEmpleadoName(cita.id_empleado)}</TableCell>
                     <TableCell>{new Date(cita.fecha + 'T00:00:00').toLocaleDateString('es-ES')}</TableCell>
                     <TableCell>{cita.hora}</TableCell>
@@ -488,23 +859,31 @@ export function CitasView() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="id_servicio">Servicio *</Label>
-                <Select
-                  value={formData.id_servicio}
-                  onValueChange={(value) => setFormData({ ...formData, id_servicio: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un servicio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockServicios.map((servicio) => (
-                      <SelectItem key={servicio.id_servicio} value={servicio.id_servicio.toString()}>
-                        {servicio.nombre} - ${servicio.precio.toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Servicios *</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded">
+                  {mockServicios.map(servicio => {
+                    const checked = (formData.id_servicios || []).includes(servicio.id_servicio.toString());
+                    return (
+                      <label key={servicio.id_servicio} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set((formData.id_servicios || []));
+                            if (e.target.checked) next.add(servicio.id_servicio.toString()); else next.delete(servicio.id_servicio.toString());
+                            setFormData({ ...formData, id_servicios: Array.from(next) });
+                          }}
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium">{servicio.nombre}</div>
+                          <div className="text-xs text-muted-foreground">${servicio.precio.toFixed(2)}</div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">Duración total: <span className="font-medium text-white">{formatDuration(computeSelectedServicesDurationDisplay())}</span></div>
               </div>
 
               <div className="space-y-2">
@@ -560,21 +939,36 @@ export function CitasView() {
 
               <div className="space-y-2">
                 <Label htmlFor="hora">Hora *</Label>
-                <Select
-                  value={formData.hora}
-                  onValueChange={(value) => setFormData({ ...formData, hora: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona hora" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select
+                    value={formData.hora}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, hora: value });
+                      const empleadoId = formData.id_empleado ? parseInt(formData.id_empleado) : undefined;
+                      if (hasConflict(empleadoId, formData.fecha, value, editingCita?.id_cita)) {
+                        toast.error('El barbero no está disponible en la fecha y hora seleccionadas');
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona hora" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const empleadoId = formData.id_empleado ? parseInt(formData.id_empleado) : undefined;
+                        const occupied = getOccupiedTimes(formData.fecha, empleadoId, editingCita?.id_cita) || [];
+                        return timeSlots.map((time) => (
+                          <SelectItem
+                            key={time}
+                            value={time}
+                            disabled={occupied.includes(time)}
+                            className={occupied.includes(time) ? 'opacity-50 cursor-not-allowed' : ''}
+                          >
+                            {time}{occupied.includes(time) ? ' — ocupado' : ''}
+                          </SelectItem>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
               </div>
 
               <div className="space-y-2 md:col-span-2">
@@ -608,7 +1002,7 @@ export function CitasView() {
               Información completa de la cita programada
             </DialogDescription>
           </DialogHeader>
-          {viewingCita && (
+                {viewingCita && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -629,9 +1023,9 @@ export function CitasView() {
                 </div>
                 <div className="space-y-2">
                   <Label>Servicio</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">{getServicioName(viewingCita.id_servicio)}</p>
-                    <p className="text-sm text-muted-foreground">${getServicioPrice(viewingCita.id_servicio).toFixed(2)}</p>
+                    <div className="p-3 bg-muted rounded-md">
+                    <p className="font-medium">{formatServicios(viewingCita)}</p>
+                    <p className="text-sm text-muted-foreground">${computeServiciosPrice(viewingCita).toFixed(2)}</p>
                   </div>
                 </div>
                 <div className="space-y-2">

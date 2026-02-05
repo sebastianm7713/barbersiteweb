@@ -113,6 +113,7 @@ export interface Cita {
   id_cliente: number;
   id_cliente_temporal?: number; // Para clientes no registrados
   id_servicio: number;
+  id_servicios?: number[];
   id_empleado?: number;
   fecha: string;
   hora: string;
@@ -834,35 +835,72 @@ export const mockServicios: Servicio[] = [
 ];
 
 export const mockCitas: Cita[] = [
+  // Ejemplos actualizados para Febrero 2026 (muestran disponibilidad distinta por barbero)
   {
     id_cita: 1,
     id_cliente: 1,
     id_servicio: 1,
+    id_servicios: [1],
     id_empleado: 1,
-    fecha: '2025-11-10',
-    hora: '10:00',
+    fecha: '2026-02-04',
+    hora: '09:00',
     estado: 'confirmada',
-    observaciones: 'Cliente prefiere fade bajo',
+    observaciones: 'Corte clásico',
   },
   {
     id_cita: 2,
     id_cliente: 2,
-    id_servicio: 2,
-    id_empleado: 2,
-    fecha: '2025-11-10',
-    hora: '11:00',
+    id_servicio: 3,
+    id_servicios: [3],
+    id_empleado: 1,
+    fecha: '2026-02-04',
+    hora: '10:30',
     estado: 'pendiente',
     observaciones: null,
   },
   {
     id_cita: 3,
+    id_cliente: 2,
+    id_servicio: 6,
+    id_servicios: [6],
+    id_empleado: 2,
+    fecha: '2026-02-04',
+    hora: '09:30',
+    estado: 'confirmada',
+    observaciones: 'Tratamiento capilar',
+  },
+  {
+    id_cita: 4,
     id_cliente: 1,
-    id_servicio: 5,
-    id_empleado: 1,
-    fecha: '2025-11-11',
+    id_servicio: 7,
+    id_servicios: [7],
+    id_empleado: 3,
+    fecha: '2026-02-05',
     hora: '14:00',
     estado: 'confirmada',
-    observaciones: 'Afeitado tradicional',
+    observaciones: 'Diseño de barba',
+  },
+  {
+    id_cita: 5,
+    id_cliente: 1,
+    id_servicio: 2,
+    id_servicios: [2],
+    id_empleado: 2,
+    fecha: '2026-02-06',
+    hora: '16:00',
+    estado: 'pendiente',
+    observaciones: null,
+  },
+  {
+    id_cita: 6,
+    id_cliente: 2,
+    id_servicio: 4,
+    id_servicios: [4],
+    id_empleado: 1,
+    fecha: '2026-02-07',
+    hora: '11:00',
+    estado: 'confirmada',
+    observaciones: null,
   },
 ];
 

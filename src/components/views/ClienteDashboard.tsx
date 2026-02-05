@@ -176,7 +176,12 @@ export function ClienteDashboard({ onReservarCita }: ClienteDashboardProps) {
                     </p>
                     {onReservarCita && (
                       <Button 
-                        onClick={() => onReservarCita(barbero.id_empleado)} 
+                        onClick={() => {
+                          try {
+                            localStorage.setItem('prefillReserva', JSON.stringify({ empleadoId: barbero.id_empleado }));
+                          } catch (e) {}
+                          onReservarCita(barbero.id_empleado);
+                        }} 
                         className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black"
                       >
                         <Calendar className="w-4 h-4 mr-2" />
@@ -223,15 +228,20 @@ export function ClienteDashboard({ onReservarCita }: ClienteDashboardProps) {
                       <span>{servicio.duracion} minutos</span>
                     </div>
                   )}
-                  {onReservarCita && (
-                    <Button 
-                      onClick={() => onReservarCita(undefined, servicio.id_servicio)} 
-                      className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Reservar Cita
-                    </Button>
-                  )}
+                    {onReservarCita && (
+                      <Button 
+                        onClick={() => {
+                          try {
+                            localStorage.setItem('prefillReserva', JSON.stringify({ servicioId: servicio.id_servicio }));
+                          } catch (e) {}
+                          onReservarCita(undefined, servicio.id_servicio);
+                        }} 
+                        className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Reservar Cita
+                      </Button>
+                    )}
                 </CardContent>
               </Card>
             ))}

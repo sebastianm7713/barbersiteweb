@@ -76,7 +76,22 @@ function AuthPages() {
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
-  const [currentView, setCurrentView] = useState<string>('dashboard');
+  const [currentView, setCurrentView] = useState<string>(() => {
+    try {
+      return localStorage.getItem('currentView') || 'dashboard';
+    } catch (e) {
+      return 'dashboard';
+    }
+  });
+
+  const handleNavigate = (view: string) => {
+    setCurrentView(view);
+    try {
+      localStorage.setItem('currentView', view);
+    } catch (e) {
+      // ignore storage errors
+    }
+  };
 
   if (!isAuthenticated) {
     return <AuthPages />;
@@ -87,7 +102,7 @@ function AppContent() {
     
     // Función para manejar la reserva de cita desde cualquier vista
     const handleReservarCita = (_empleadoId?: number, _servicioId?: number) => {
-      setCurrentView('citas');
+      handleNavigate('citas');
     };
     
     switch (currentView) {
@@ -137,7 +152,7 @@ function AppContent() {
   };
 
   return (
-    <MainLayout currentView={currentView} onNavigate={setCurrentView}>
+    <MainLayout currentView={currentView} onNavigate={handleNavigate}>
       {renderView()}
     </MainLayout>
   );
